@@ -5,7 +5,7 @@
 # Kevin O'Neill
 
 import random, string, pickle, sys
-
+import Queue
 
 
 # adapted from moooeeeep, stackoverflow
@@ -22,6 +22,7 @@ class Markov:
   
   def __init__(self):
     self.states = {} #name of item, object of item
+    self.markov_order=2
   
   def find_state(self, c):
     if c not in self.states.keys():
@@ -30,11 +31,14 @@ class Markov:
   
   def add_data(self, data):
     last=None
+    self.q=[]
     for item in data:
-      tmp=self.find_state(item)
+      self.q.append(item)
+      if len(self.q)>self.markov_order:
+        self.q=self.q[1:]
       if last!=None:
         last.add_datum(item)
-      last=tmp
+      last=self.find_state(tuple(self.q))
   
   def print_states(self):
     num_c = 0
@@ -43,7 +47,7 @@ class Markov:
       num_w+=1
       print obj.content
       for n in obj.next_state:
-        print "  " + n
+        print "  " + str(n)
         print "    " + str(1.0*obj.next_state[n]/obj.next_state_sum)
         num_c+=1
     print "DATABASE:"
@@ -52,13 +56,16 @@ class Markov:
 
   def generate_text(self):
     node = self.states[random.choice(self.states.keys())]
-    text=node.content
+    text=' '.join(node.content)
+    q=list(node.content)
     for x in range(0,100):
-      new_node = self.find_state(node.get_next_state())
-      text+=" "+new_node.content
+      q[1:].append(node.get_next_state())
+      new_node = self.find_state(tuple(q))
+      text+=" "+new_node.content[-1]
       node=new_node
     print text
 
+# some work needs to be done here to implement nth-order
 class MarkovState:
   
   def __init__(self, c):
@@ -73,10 +80,12 @@ class MarkovState:
     self.next_state_sum+=1
     
   def get_next_state(self):
+    if self.next_state_sum <= 1:
+      return "_"
     return weighted_choice(self.next_state, self.next_state_sum)
     
     
-loadOnly=True
+loadOnly=False
     
     
 # testing #
@@ -99,7 +108,7 @@ if(not loadOnly):
   
   f.close()
   
-  #linelimit=1000
+  linelimit=250
   
   bible = open('bible_corpus.txt','r')
   c=0
@@ -121,6 +130,6 @@ else:
   m = pickle.load( open( "markov_dump.p", "rb" ) )
 
 
-#m.print_states()
+m.print_states()
 
 m.generate_text()
